@@ -192,9 +192,12 @@ module LegacyWorksheet
       old_row = sheet_data.rows[row_index - 1]
       if old_row then
         new_cells = old_row.cells.collect { |c|
-                                            if c.nil? then nil
-                                            else RubyXL::Cell.new(:style_index => c.style_index)
-                                            end }
+                      if c.nil? then nil
+                      else nc = RubyXL::Cell.new(:style_index => c.style_index)
+                           nc.worksheet = self
+                           nc
+                      end
+                    }
       end
     end
 
@@ -258,54 +261,6 @@ module LegacyWorksheet
     cols.insert_column(column_index)
 
     # TODO: update column numbers
-  end
-
-  def insert_cell(row = 0, col = 0, data = nil, formula = nil, shift = nil)
-    validate_workbook
-    ensure_cell_exists(row, col)
-
-    case shift
-    when nil then # No shifting at all
-    when :right then
-      sheet_data.rows[row].insert_cell_shift_right(nil, col)
-    when :down then
-      add_row(sheet_data.size, :cells => Array.new(sheet_data.rows[row].size))
-      (sheet_data.size - 1).downto(row+1) { |index|
-        sheet_data.rows[index].cells[col] = sheet_data.rows[index-1].cells[col]
-      }                                                                             		
-    else
-      raise 'invalid shift option'
-    end
-
-    return add_cell(row,col,data,formula)
-  end
-
-  # by default, only sets cell to nil
-  # if :left is specified, method will shift row contents to the right of the deleted cell to the left
-  # if :up is specified, method will shift column contents below the deleted cell upward
-  def delete_cell(row_index = 0, column_index=0, shift=nil)
-    validate_workbook
-    validate_nonnegative(row_index)
-    validate_nonnegative(column_index)
-
-    row = sheet_data[row_index]
-    old_cell = row && row[column_index]
-
-    case shift
-    when nil then
-      row.cells[column_index] = nil if row
-    when :left then
-      row.delete_cell_shift_left(column_index) if row
-    when :up then
-      (row_index...(sheet_data.size - 1)).each { |index|
-        c = sheet_data.rows[index].cells[column_index] = sheet_data.rows[index + 1].cells[column_index]
-        c.row -= 1 if c.is_a?(Cell)
-      }
-    else
-      raise 'invalid shift option'
-    end
-
-    return old_cell
   end
 
   private
